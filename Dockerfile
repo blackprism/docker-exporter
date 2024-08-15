@@ -12,4 +12,6 @@ FROM scratch
 COPY --from=builder /app/docker-exporter /
 COPY --from=builder /app/tool/du .
 
+ENV PATH="/"
+
 ENTRYPOINT ["./docker-exporter"]

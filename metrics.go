@@ -1,18 +1,20 @@
 package main
 
 import (
+	"bytes"
 	"context"
-	"fmt"
+	"io"
 	"log/slog"
 	"math"
 	"net/http"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/docker/docker/api/types/volume"
 	"github.com/docker/docker/client"
-	"github.com/sourcegraph/conc/pool"
+	"golang.org/x/sync/errgroup"
 )
 
 type Metrics struct {
@@ -37,60 +39,85 @@ func (m *Metrics) Metrics(w http.ResponseWriter, r *http.Request) {
 
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
-		slog.Error("error getting docker client", slog.Any("error", err))
+		slog.LogAttrs(context.Background(), slog.LevelError, "error getting docker client", slog.Any("error", err))
 	}
 
 	volumes, err := cli.VolumeList(context.Background(), volume.ListOptions{})
 	if err != nil {
-		slog.Error("failed to list volumes", slog.Any("error", err))
+		slog.LogAttrs(context.Background(), slog.LevelError, "failed to list volumes", slog.Any("error", err))
 		return
 	}
 
-	var dockerVolumes []dockerVolumeSize
+	metrics := make(chan string)
 
-	p := pool.New().WithMaxGoroutines(m.VolumeConcurrency)
+	go func() {
+		for metric := range metrics {
+			_, write := io.WriteString(w, metric)
+			if write != nil {
+				return
+			}
+		}
+	}()
+
+	g, _ := errgroup.WithContext(r.Context())
+	g.SetLimit(m.VolumeConcurrency)
 	for _, vol := range volumes.Volumes {
-		p.Go(func() {
-			cmd := exec.Command("./du", "-bs", m.RootFS+vol.Mountpoint)
+		g.Go(func() error {
+			var path strings.Builder
+			path.WriteString(m.RootFS)
+			path.WriteString(vol.Mountpoint)
+			cmd := exec.Command("du", "-bs", path.String())
+			//out, errCmd := cmd.Output()
 			out, errCmd := cmd.Output()
 
 			if errCmd != nil {
-				slog.Error("failed to get directory size", slog.Any("error", errCmd))
-				return
+				println(errCmd.Error())
 			}
 
-			outSplitted := strings.SplitN(string(out), "\t", 2)
+			if errCmd != nil {
+				slog.LogAttrs(context.Background(), slog.LevelError, "failed to get directory size", slog.Any("error", errCmd))
+				return nil
+			}
 
-			dockerVolumes = append(dockerVolumes, dockerVolumeSize{
-				Name:       vol.Name,
-				Size:       outSplitted[0],
-				MountPoint: vol.Mountpoint,
-				Project:    vol.Labels["com.docker.compose.project"],
-				Volume:     vol.Labels["com.docker.compose.volume"],
-			})
+			outSplitted := bytes.SplitN(out, []byte("\t"), 2)
+
+			if len(outSplitted) != 2 {
+				slog.LogAttrs(context.Background(), slog.LevelError, "unexpected output from du command", slog.String("output", string(out)))
+				return nil
+			}
+
+			metrics <- buildMetric(vol, outSplitted[0])
+			return nil
 		})
 	}
-	p.Wait()
 
-	for _, dvs := range dockerVolumes {
-		metric := fmt.Sprintf("docker_volume_size_bytes{name=%q,mountpoint=%q", dvs.Name, dvs.MountPoint)
-		if dvs.Project != "" {
-			metric += fmt.Sprintf(",project=%q", dvs.Project)
-		}
-		if dvs.Volume != "" {
-			metric += fmt.Sprintf(",volume=%q", dvs.Volume)
-		}
-		metric += fmt.Sprintf("} %s", dvs.Size)
+	err = g.Wait()
 
-		_, errPrint := fmt.Fprintln(w, metric)
-
-		if errPrint != nil {
-			slog.Error("failed to output metric", slog.Any("error", errPrint))
-			continue
-		}
+	if err != nil {
+		println(err.Error())
+		return
 	}
 
 	m.volumeComputationUsage += time.Since(start).Milliseconds()
+}
 
-	return
+func buildMetric(vol *volume.Volume, size []byte) string {
+	var metric strings.Builder
+	metric.WriteString("docker_volume_size_bytes{name=")
+	metric.WriteString(strconv.Quote(vol.Name))
+	metric.WriteString(",mountpoint=")
+	metric.WriteString(strconv.Quote(vol.Mountpoint))
+	if vol.Labels["com.docker.compose.project"] != "" {
+		metric.WriteString(",project=")
+		metric.WriteString(strconv.Quote(vol.Labels["com.docker.compose.project"]))
+	}
+	if vol.Labels["com.docker.compose.volume"] != "" {
+		metric.WriteString(",volume=")
+		metric.WriteString(strconv.Quote(vol.Labels["com.docker.compose.volume"]))
+	}
+	metric.WriteString("} ")
+	metric.Write(size)
+	metric.WriteString("\n")
+
+	return metric.String()
 }
