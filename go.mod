@@ -1,10 +1,11 @@
 module github.com/blackprism/docker-exporter
 
-go 1.22.6
+go 1.23
 
 require (
 	github.com/docker/docker v27.1.2+incompatible
 	github.com/google/gops v0.3.28
+	github.com/grafana/pyroscope-go v1.1.1
 	github.com/samber/oops v1.12.2
 	golang.org/x/sync v0.8.0
 )
@@ -19,6 +20,8 @@ require (
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
+	github.com/grafana/pyroscope-go/godeltaprof v0.1.7 // indirect
+	github.com/klauspost/compress v1.17.9 // indirect
 	github.com/moby/docker-image-spec v1.3.1 // indirect
 	github.com/moby/term v0.5.0 // indirect
 	github.com/morikuni/aec v1.0.0 // indirect

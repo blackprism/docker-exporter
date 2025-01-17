@@ -9,21 +9,15 @@ import (
 	"strings"
 
 	"github.com/google/gops/agent"
+	pyroscope "github.com/grafana/pyroscope-go"
 	"github.com/samber/oops"
 )
 
 var defaultPort = "9100"
 var defaultRootFSDirectory = "/rootfs"
+var defaultMetricConcurrency = 100
 var defaultVolumeConcurrency = 10
 var defaultVolumeComputationLimit = 10000
-
-type dockerVolumeSize struct {
-	Name       string
-	Size       string
-	MountPoint string
-	Project    string
-	Volume     string
-}
 
 func main() {
 	ctx := context.Background()
@@ -34,6 +28,15 @@ func main() {
 			return
 		}
 	}()
+
+	serverAddress := os.Getenv("PYROSCOPE_SERVER_ADDRESS")
+	if serverAddress != "" {
+		pyroscope.Start(pyroscope.Config{
+			ApplicationName: "docker-exporter",
+			ServerAddress:   serverAddress,
+			Logger:          pyroscope.StandardLogger,
+		})
+	}
 
 	err := run(ctx, os.Getenv)
 
@@ -50,6 +53,12 @@ func run(ctx context.Context, getenv func(string) string) error {
 		rootfs = defaultRootFSDirectory
 	}
 
+	metricConcurrency, err := strconv.Atoi(getenv("METRIC_CONCURRENCY"))
+
+	if metricConcurrency == 0 || err != nil {
+		metricConcurrency = defaultMetricConcurrency
+	}
+
 	volumeConcurrency, err := strconv.Atoi(getenv("VOLUME_CONCURRENCY"))
 
 	if volumeConcurrency == 0 || err != nil {
@@ -64,6 +73,7 @@ func run(ctx context.Context, getenv func(string) string) error {
 
 	m := Metrics{
 		RootFS:                 rootfs,
+		MetricConcurrency:      metricConcurrency,
 		VolumeConcurrency:      volumeConcurrency,
 		VolumeComputationLimit: int64(volumeComputationLimit),
 	}
