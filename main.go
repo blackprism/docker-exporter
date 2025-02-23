@@ -6,11 +6,9 @@ import (
 	"net/http"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/docker/docker/client"
 	"github.com/google/gops/agent"
-	"github.com/grafana/pyroscope-go"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/samber/oops"
@@ -25,31 +23,6 @@ func main() {
 			return
 		}
 	}()
-
-	serverAddress := os.Getenv("PYROSCOPE_SERVER_ADDRESS")
-
-	if serverAddress != "" {
-		pyroscope.Start(pyroscope.Config{
-			ApplicationName: "docker-exporter",
-			ServerAddress:   serverAddress,
-			UploadRate:      1 * time.Second,
-			ProfileTypes: []pyroscope.ProfileType{
-				// these profile types are enabled by default:
-				pyroscope.ProfileCPU,
-				pyroscope.ProfileAllocObjects,
-				pyroscope.ProfileAllocSpace,
-				pyroscope.ProfileInuseObjects,
-				pyroscope.ProfileInuseSpace,
-
-				// these profile types are optional:
-				pyroscope.ProfileGoroutines,
-				pyroscope.ProfileMutexCount,
-				pyroscope.ProfileMutexDuration,
-				pyroscope.ProfileBlockCount,
-				pyroscope.ProfileBlockDuration,
-			},
-		})
-	}
 
 	err := run(cli.MustGetParameter)
 

@@ -5,10 +5,8 @@ go 1.23
 require (
 	github.com/docker/docker v27.1.2+incompatible
 	github.com/google/gops v0.3.28
-	github.com/grafana/pyroscope-go v1.1.1
 	github.com/prometheus/client_golang v1.21.0
 	github.com/samber/oops v1.12.2
-	github.com/spf13/cobra v1.7.0
 	golang.org/x/sync v0.10.0
 )
 
@@ -24,8 +22,6 @@ require (
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
-	github.com/grafana/pyroscope-go/godeltaprof v0.1.7 // indirect
-	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/klauspost/compress v1.17.11 // indirect
 	github.com/moby/docker-image-spec v1.3.1 // indirect
 	github.com/moby/term v0.5.0 // indirect
@@ -39,7 +35,6 @@ require (
 	github.com/prometheus/common v0.62.0 // indirect
 	github.com/prometheus/procfs v0.15.1 // indirect
 	github.com/samber/lo v1.47.0 // indirect
-	github.com/spf13/pflag v1.0.5 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.53.0 // indirect
 	go.opentelemetry.io/otel v1.28.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.28.0 // indirect
