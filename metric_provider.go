@@ -50,6 +50,10 @@ func newMetricProvider(cli *client.Client, dockerComposeOnly bool, childProcessE
 					labels["project"] = cont.Labels["com.docker.compose.project"]
 				}
 
+				if cont.Labels["com.docker.compose.service"] != "" {
+					labels["service"] = cont.Labels["com.docker.compose.service"]
+				}
+
 				return []metricValue{
 					{
 						value:     float64(containerStats.CPUStats.CPUUsage.UsageInUsermode) / 1_000_000_000.0,
@@ -70,6 +74,10 @@ func newMetricProvider(cli *client.Client, dockerComposeOnly bool, childProcessE
 
 				if cont.Labels["com.docker.compose.project"] != "" {
 					labels["project"] = cont.Labels["com.docker.compose.project"]
+				}
+
+				if cont.Labels["com.docker.compose.service"] != "" {
+					labels["service"] = cont.Labels["com.docker.compose.service"]
 				}
 
 				return []metricValue{
@@ -94,6 +102,10 @@ func newMetricProvider(cli *client.Client, dockerComposeOnly bool, childProcessE
 					labels["project"] = cont.Labels["com.docker.compose.project"]
 				}
 
+				if cont.Labels["com.docker.compose.service"] != "" {
+					labels["service"] = cont.Labels["com.docker.compose.service"]
+				}
+
 				return []metricValue{
 					{
 						value:     float64(containerStats.MemoryStats.Usage),
@@ -114,6 +126,10 @@ func newMetricProvider(cli *client.Client, dockerComposeOnly bool, childProcessE
 
 				if cont.Labels["com.docker.compose.project"] != "" {
 					labels["project"] = cont.Labels["com.docker.compose.project"]
+				}
+
+				if cont.Labels["com.docker.compose.service"] != "" {
+					labels["service"] = cont.Labels["com.docker.compose.service"]
 				}
 
 				workingSet := containerStats.MemoryStats.Usage
@@ -147,6 +163,10 @@ func newMetricProvider(cli *client.Client, dockerComposeOnly bool, childProcessE
 					labels["project"] = cont.Labels["com.docker.compose.project"]
 				}
 
+				if cont.Labels["com.docker.compose.service"] != "" {
+					labels["service"] = cont.Labels["com.docker.compose.service"]
+				}
+
 				read := 0
 				for _, ioStatEntry := range containerStats.BlkioStats.IoServiceBytesRecursive {
 					if ioStatEntry.Op != "read" {
@@ -176,6 +196,10 @@ func newMetricProvider(cli *client.Client, dockerComposeOnly bool, childProcessE
 
 				if cont.Labels["com.docker.compose.project"] != "" {
 					labels["project"] = cont.Labels["com.docker.compose.project"]
+				}
+
+				if cont.Labels["com.docker.compose.service"] != "" {
+					labels["service"] = cont.Labels["com.docker.compose.service"]
 				}
 
 				write := 0
@@ -209,6 +233,10 @@ func newMetricProvider(cli *client.Client, dockerComposeOnly bool, childProcessE
 					labels["project"] = cont.Labels["com.docker.compose.project"]
 				}
 
+				if cont.Labels["com.docker.compose.service"] != "" {
+					labels["service"] = cont.Labels["com.docker.compose.service"]
+				}
+
 				var metricValues []metricValue
 
 				for iface, networkStats := range containerStats.Networks {
@@ -238,6 +266,10 @@ func newMetricProvider(cli *client.Client, dockerComposeOnly bool, childProcessE
 
 				if cont.Labels["com.docker.compose.project"] != "" {
 					labels["project"] = cont.Labels["com.docker.compose.project"]
+				}
+
+				if cont.Labels["com.docker.compose.service"] != "" {
+					labels["service"] = cont.Labels["com.docker.compose.service"]
 				}
 
 				var metricValues []metricValue
@@ -272,6 +304,10 @@ func newMetricProvider(cli *client.Client, dockerComposeOnly bool, childProcessE
 
 				if cont.Labels["com.docker.compose.project"] != "" {
 					labels["project"] = cont.Labels["com.docker.compose.project"]
+				}
+
+				if cont.Labels["com.docker.compose.service"] != "" {
+					labels["service"] = cont.Labels["com.docker.compose.service"]
 				}
 
 				processList, _ := cli.ContainerTop(context.Background(), cont.ID, []string{"aux"})
