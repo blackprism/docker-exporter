@@ -38,7 +38,6 @@
         -v /var/run/docker.sock:/var/run/docker.sock \
         blackprism/docker-exporter \
         --port=9100 \
-        --rootfs=/ \
         --volume=true
     ```
 
