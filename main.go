@@ -5,23 +5,20 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
-	"strconv"
 	"strings"
+	"time"
 
+	"github.com/docker/docker/client"
 	"github.com/google/gops/agent"
-	pyroscope "github.com/grafana/pyroscope-go"
+	"github.com/grafana/pyroscope-go"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/samber/oops"
+
+	"github.com/blackprism/docker-exporter/cli"
 )
 
-var defaultPort = "9100"
-var defaultRootFSDirectory = "/rootfs"
-var defaultMetricConcurrency = 100
-var defaultVolumeConcurrency = 10
-var defaultVolumeComputationLimit = 10000
-
 func main() {
-	ctx := context.Background()
-
 	go func() {
 		err := agent.Listen(agent.Options{Addr: "0.0.0.0:50000"})
 		if err != nil {
@@ -30,15 +27,31 @@ func main() {
 	}()
 
 	serverAddress := os.Getenv("PYROSCOPE_SERVER_ADDRESS")
+
 	if serverAddress != "" {
 		pyroscope.Start(pyroscope.Config{
 			ApplicationName: "docker-exporter",
 			ServerAddress:   serverAddress,
-			Logger:          pyroscope.StandardLogger,
+			UploadRate:      1 * time.Second,
+			ProfileTypes: []pyroscope.ProfileType{
+				// these profile types are enabled by default:
+				pyroscope.ProfileCPU,
+				pyroscope.ProfileAllocObjects,
+				pyroscope.ProfileAllocSpace,
+				pyroscope.ProfileInuseObjects,
+				pyroscope.ProfileInuseSpace,
+
+				// these profile types are optional:
+				pyroscope.ProfileGoroutines,
+				pyroscope.ProfileMutexCount,
+				pyroscope.ProfileMutexDuration,
+				pyroscope.ProfileBlockCount,
+				pyroscope.ProfileBlockDuration,
+			},
 		})
 	}
 
-	err := run(ctx, os.Getenv)
+	err := run(cli.MustGetParameter)
 
 	if err != nil {
 		slog.LogAttrs(context.Background(), slog.LevelError, "failed to start docker-exporter", slog.Any("error", err))
@@ -46,45 +59,31 @@ func main() {
 	}
 }
 
-func run(ctx context.Context, getenv func(string) string) error {
-	rootfs := getenv("ROOTFS_DIRECTORY")
+func run(mustGetParameter func(string) any) error {
+	port := mustGetParameter("port").(string)
+	rootfs := mustGetParameter("rootfs").(string)
+	volumeConcurrency := mustGetParameter("volume-concurrency").(int)
+	volumeComputationLimit := mustGetParameter("volume-computation-limit").(int)
+	dockerComposeOnly := mustGetParameter("docker-compose-only").(bool)
+	volumeEnabled := mustGetParameter("volume-enabled").(bool)
+	childProcessEnabled := mustGetParameter("child-process-enabled").(bool)
 
-	if rootfs == "" {
-		rootfs = defaultRootFSDirectory
+	cli, _ := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+
+	r := prometheus.NewRegistry()
+	r.MustRegister(
+		newMetricProvider(cli, dockerComposeOnly, childProcessEnabled),
+	)
+
+	if volumeEnabled {
+		r.MustRegister(
+			newVolumeProvider(cli, dockerComposeOnly, rootfs, volumeConcurrency, int64(volumeComputationLimit)),
+		)
 	}
 
-	metricConcurrency, err := strconv.Atoi(getenv("METRIC_CONCURRENCY"))
-
-	if metricConcurrency == 0 || err != nil {
-		metricConcurrency = defaultMetricConcurrency
-	}
-
-	volumeConcurrency, err := strconv.Atoi(getenv("VOLUME_CONCURRENCY"))
-
-	if volumeConcurrency == 0 || err != nil {
-		volumeConcurrency = defaultVolumeConcurrency
-	}
-
-	volumeComputationLimit, err := strconv.Atoi(getenv("VOLUME_COMPUTATION_LIMIT"))
-
-	if volumeComputationLimit == 0 || err != nil {
-		volumeComputationLimit = defaultVolumeComputationLimit
-	}
-
-	m := Metrics{
-		RootFS:                 rootfs,
-		MetricConcurrency:      metricConcurrency,
-		VolumeConcurrency:      volumeConcurrency,
-		VolumeComputationLimit: int64(volumeComputationLimit),
-	}
-
-	http.HandleFunc("/metrics", m.Metrics)
-
-	port := getenv("PORT")
-
-	if port == "" {
-		port = defaultPort
-	}
+	http.HandleFunc("/metrics", func(w http.ResponseWriter, req *http.Request) {
+		promhttp.HandlerFor(r, promhttp.HandlerOpts{ErrorHandling: promhttp.ContinueOnError}).ServeHTTP(w, req)
+	})
 
 	var addr strings.Builder
 	addr.WriteString(":")
