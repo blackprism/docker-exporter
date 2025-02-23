@@ -25,6 +25,7 @@ type volumeMetric struct {
 type volumeProvider struct {
 	cli                    *client.Client
 	dockerComposeOnly      bool
+	rootfs                 string
 	volumeConcurrency      int
 	volumeComputationLimit int64
 	volumeComputationUsage int64
@@ -35,6 +36,7 @@ type volumeProvider struct {
 func newVolumeProvider(
 	cli *client.Client,
 	dockerComposeOnly bool,
+	rootfs string,
 	volumeConcurrency int,
 	volumeComputationLimit int64,
 ) *volumeProvider {
@@ -47,6 +49,7 @@ func newVolumeProvider(
 	return &volumeProvider{
 		cli:                    cli,
 		dockerComposeOnly:      dockerComposeOnly,
+		rootfs:                 rootfs,
 		volumeConcurrency:      volumeConcurrency,
 		volumeComputationLimit: volumeComputationLimit,
 		metric:                 metric,
@@ -105,6 +108,7 @@ func (m volumeProvider) Collect(ch chan<- prometheus.Metric) {
 
 		g.Go(func() error {
 			var path strings.Builder
+			path.WriteString(m.rootfs)
 			path.WriteString(vol.Mountpoint)
 			command := []string{"du", "-bs", path.String()}
 			cmd := exec.Command(command[0], command[1:]...)

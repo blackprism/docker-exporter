@@ -34,6 +34,7 @@ func main() {
 
 func run(mustGetParameter func(string) any) error {
 	port := mustGetParameter("port").(string)
+	rootfs := mustGetParameter("rootfs").(string)
 	volumeConcurrency := mustGetParameter("volume-concurrency").(int)
 	volumeComputationLimit := mustGetParameter("volume-computation-limit").(int)
 	dockerComposeOnly := mustGetParameter("docker-compose-only").(bool)
@@ -49,7 +50,7 @@ func run(mustGetParameter func(string) any) error {
 
 	if volumeEnabled {
 		r.MustRegister(
-			newVolumeProvider(cli, dockerComposeOnly, volumeConcurrency, int64(volumeComputationLimit)),
+			newVolumeProvider(cli, dockerComposeOnly, rootfs, volumeConcurrency, int64(volumeComputationLimit)),
 		)
 	}
 

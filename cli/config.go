@@ -6,6 +6,7 @@ import (
 )
 
 var port *string
+var rootfs *string
 var volumeConcurrency *int
 var volumeComputationLimit *int
 var dockerComposeOnly *bool
@@ -14,6 +15,7 @@ var childProcessEnabled *bool
 
 func init() {
 	port = flag.String("port", "9100", "port to listen on")
+	rootfs = flag.String("rootfs", "/", "path to root filesystem")
 	volumeConcurrency = flag.Int("volume-concurrency", 10, "maximum number of volumes to compute concurrently")
 	volumeComputationLimit = flag.Int("volume-computation-limit", 10000, "maximum time (ms) allowed to compute volume within 1mn before next call will be skipped")
 	dockerComposeOnly = flag.Bool("docker-compose-only", false, "Only report docker-compose containers")
@@ -27,6 +29,10 @@ func MustGetParameter(parameter string) any {
 
 	if parameter == "port" {
 		return *port
+	}
+
+	if parameter == "rootfs" {
+		return *rootfs
 	}
 
 	if parameter == "volume-enabled" {
