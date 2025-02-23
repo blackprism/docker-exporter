@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/volume"
 	"github.com/docker/docker/client"
 	"github.com/prometheus/client_golang/prometheus"
@@ -93,6 +94,18 @@ func (m volumeProvider) Collect(ch chan<- prometheus.Metric) {
 
 	volumes, err := m.cli.VolumeList(context.Background(), volume.ListOptions{})
 
+	containerList, _ := m.cli.ContainerList(context.Background(), container.ListOptions{})
+
+	services := make(map[string]string)
+
+	for _, cont := range containerList {
+		for _, mount := range cont.Mounts {
+			if mount.Name != "" {
+				services[mount.Name] = strings.TrimPrefix(cont.Names[0], "/")
+			}
+		}
+	}
+
 	if err != nil {
 		slog.LogAttrs(context.Background(), slog.LevelError, "failed to list volumes", slog.Any("error", err))
 		return
@@ -133,8 +146,18 @@ func (m volumeProvider) Collect(ch chan<- prometheus.Metric) {
 			labels["mountpoint"] = vol.Mountpoint
 			labels["volume"] = vol.Labels["com.docker.compose.volume"]
 
+			project := false
 			if vol.Labels["com.docker.compose.project"] != "" {
 				labels["project"] = vol.Labels["com.docker.compose.project"]
+				project = true
+			}
+
+			if service, ok := services[vol.Name]; ok {
+				if project {
+					labels["service"] = m.extractServiceFromName(service)
+				} else {
+					labels["service"] = service
+				}
 			}
 
 			clabels, cvalues := volumeLabels(labels)
@@ -157,4 +180,11 @@ func (m volumeProvider) Collect(ch chan<- prometheus.Metric) {
 	if err != nil {
 		return
 	}
+}
+
+func (m volumeProvider) extractServiceFromName(name string) string {
+	separator := string(name[strings.LastIndexAny(name, "._-")])
+	nameSplitted := strings.Split(name, separator)
+
+	return strings.Join(nameSplitted[1:len(nameSplitted)-1], separator)
 }
