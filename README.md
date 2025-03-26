@@ -1,5 +1,7 @@
 # docker-exporter
 
+https://hub.docker.com/r/blackprism/docker-exporter
+
 `docker-exporter` is a Prometheus exporter that exposes detailed metrics about running Docker containers. It provides information on CPU usage, memory usage, network usage, I/O, volume size for each container, as well as for child processes.
 
 ## Features
