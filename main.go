@@ -9,9 +9,11 @@ import (
 
 	"github.com/docker/docker/client"
 	"github.com/google/gops/agent"
+	_ "github.com/grafana/pyroscope-go/godeltaprof/http/pprof"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/samber/oops"
+	_ "net/http/pprof"
 
 	"github.com/blackprism/docker-exporter/cli"
 )
@@ -20,6 +22,15 @@ func main() {
 	go func() {
 		err := agent.Listen(agent.Options{Addr: "0.0.0.0:50000"})
 		if err != nil {
+			slog.LogAttrs(context.Background(), slog.LevelError, "failed to start gops", slog.Any("error", err))
+			return
+		}
+	}()
+
+	go func() {
+		err := http.ListenAndServe("0.0.0.0:6060", nil)
+		if err != nil {
+			slog.LogAttrs(context.Background(), slog.LevelError, "failed to start pprof", slog.Any("error", err))
 			return
 		}
 	}()

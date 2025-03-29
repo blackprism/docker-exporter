@@ -35,6 +35,8 @@ type metricProvider struct {
 	metrics           []dockerMetric
 }
 
+var reg = regexp.MustCompile(`[^\w-.]`)
+
 func newMetricProvider(cli *client.Client, dockerComposeOnly bool, childProcessEnabled bool) *metricProvider {
 	metrics := []dockerMetric{
 		{
@@ -352,7 +354,6 @@ func newMetricProvider(cli *client.Client, dockerComposeOnly bool, childProcessE
 						processType = "main"
 					}
 
-					reg := regexp.MustCompile(`[^\w-.]`)
 					name := strings.Split(process[commandIndex], " ")[0]
 					name = filepath.Base(name)
 					name = reg.ReplaceAllString(name, " ")
